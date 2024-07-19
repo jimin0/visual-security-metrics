@@ -1,42 +1,56 @@
 import numpy as np
 import cv2
-from iibvsi import IIBVSI
+import matplotlib.pyplot as plt
+from image_metrics import ImageMetrics
 
-# 테스트용 이미지 로드 
-# plain_img = cv2.imread('path_to_plain_image.png', cv2.IMREAD_GRAYSCALE)
-# encrypted_img = cv2.imread('path_to_encrypted_image.png', cv2.IMREAD_GRAYSCALE)
+plain_img_path = "/Users/jiminking/Documents/김지민/projects/myproject/gradu/data/IVC-SelectEncrypt/cimg6013.pgm"
+enc_img_path = "/Users/jiminking/Documents/김지민/projects/myproject/gradu/data/IVC-SelectEncrypt/cimg6013-021-trad.pgm"
 
-np.random.seed(0)
-plain_img = np.random.rand(512, 512)  # 원본 이미지
-encrypted_img = np.random.rand(512, 512)  # 암호화된 이미지
+# 테스트용 이미지 로드
+plain_img = cv2.imread(plain_img_path, cv2.IMREAD_GRAYSCALE)
+encrypted_img = cv2.imread(enc_img_path, cv2.IMREAD_GRAYSCALE)
 
 print("start")
 
-# 이미지가 제대로 로드되었는지 확인
 if plain_img is None or encrypted_img is None:
     raise ValueError("이미지를 로드할 수 없습니다.")
 
-# 이미지 크기가 같은지 확인
 if plain_img.shape != encrypted_img.shape:
     raise ValueError("원본 이미지와 암호화된 이미지의 크기가 다릅니다.")
 
-iibvsi = IIBVSI()
-score = iibvsi.compute_iibvsi(plain_img, encrypted_img)
+# 이미지 데이터 타입을 float32로 변환
+plain_img = plain_img.astype(np.float32)
+encrypted_img = encrypted_img.astype(np.float32)
 
-print(f"IIBVSI 점수: {score}")
+plain_img = plain_img / 255.0
+encrypted_img = encrypted_img / 255.0
 
-# 결과 시각화 (선택사항)
-import matplotlib.pyplot as plt
+# 매트릭 계ㅅ산~
+metrics = ImageMetrics()
+results = metrics.calculate_all_metrics(plain_img, encrypted_img)
 
-plt.figure(figsize=(12, 4))
+# 결과 출력
+for metric, value in results.items():
+    print(f"{metric}: {value:.4f}")
+
+# 결과 시각화
+plt.figure(figsize=(15, 5))
 plt.subplot(131)
-plt.imshow(plain_img, cmap='gray')
-plt.title('원본 이미지')
+plt.imshow(plain_img, cmap="gray")
+plt.title("Original Image")
 plt.subplot(132)
-plt.imshow(encrypted_img, cmap='gray')
-plt.title('암호화된 이미지')
+plt.imshow(encrypted_img, cmap="gray")
+plt.title("Encrypted Image")
 plt.subplot(133)
-plt.text(0.5, 0.5, f'IIBVSI: {score:.4f}', ha='center', va='center', fontsize=20)
-plt.axis('off')
+plt.axis("off")
+plt.text(
+    0.5,
+    0.5,
+    "\n".join([f"{k}: {v:.4f}" for k, v in results.items()]),
+    ha="center",
+    va="center",
+    fontsize=12,
+)
+plt.title("Metrics")
 plt.tight_layout()
 plt.show()
