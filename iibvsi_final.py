@@ -124,38 +124,95 @@ def compute_texture_map(img, S, O):
     return texture_map
 
 
+def compute_contrast_similarity_map(C_P, C_E, R1=1e-12):
+    """
+    수식 10: Spatial Contrast Similarity Map 계산
+    - param C_P: 원본 이미지 GM 평균 맵
+    - param C_E: 암호화된 이미지의 GM 평균 맵
+    - param R1: 분모 0 방지를 위한 상수
+    - return: Spatial Contrast Similarity Map
+    """
+    S_C = (2 * C_P * C_E + R1) / (C_P**2 + C_E**2 + R1)
+    return S_C
+
+
+def compute_texture_similarity_map(T_P, T_E, R2=1e-12):
+    """
+    수식 11: Texture Similarity Map 계산
+    - param T_P: 원본 이미지 Texture map
+    - param T_E: 암호화된 이미지  Texture map
+    - param R2: 분모 0 방지를 위한 상수
+    - return: Texture Similarity Map
+    """
+    S_T = (2 * T_P * T_E + R2) / (T_P**2 + T_E**2 + R2)
+    return S_T
+
+
+def compute_visual_security_map(S_C, S_T):
+    """
+    수식 12: Visual Security Map 계산
+    - param S_C: Spatial Contrast Similarity Map
+    - param S_T: Texture Similarity Map
+    - return: Visual Security Map
+    """
+
+    alpha = np.mean(S_C)  # sc 평균값
+    beta = np.mean(S_T)  # st 평균값
+    S_VS = (S_C**alpha) * (S_T**beta)
+    return S_VS
+
+
 """
 시각화 
 """
 # 이미지 로드
-image_path = "/Users/jiminking/Documents/김지민/projects/myproject/gradu/data/black_data/Angelina Jolie/001_fe3347c0.jpg.png"
+plain_image_path = "/Users/jiminking/Documents/김지민/projects/myproject/gradu/data/PEID/refimg/tower.bmp"
+encrypted_image_path = "/Users/jiminking/Documents/김지민/projects/myproject/gradu/data/PEID/encimg/tower_10_5.bmp"
 
-img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+img_plain = cv2.imread(plain_image_path, cv2.IMREAD_GRAYSCALE)
+img_encrypted = cv2.imread(encrypted_image_path, cv2.IMREAD_GRAYSCALE)
 
-if img is None:
-    raise FileNotFoundError("Image not found")
+
+if img_plain is None:
+    raise FileNotFoundError("Plain image not found")
+if img_encrypted is None:
+    raise FileNotFoundError("Encrypted image not found")
 
 # 파라미터 설정
 sigma = 1.0
 M = 3  # GM 맵의 최대 차수
 S = 4  # 스케일 수
 O = 8  # 방향 수
+# Compute the gradient magnitudes and spatial contrast maps
+G_P = compute_gradient_magnitude(img_plain, sigma)  # GM
+C_P = compute_spatial_contrast_map(img_plain, sigma, M)  # GM 평균
+G_E = compute_gradient_magnitude(img_encrypted, sigma)  # GM
+C_E = compute_spatial_contrast_map(img_encrypted, sigma, M)  # GM 평균
 
-G_P = compute_gradient_magnitude(img, sigma)  # GM
-C_P = compute_spatial_contrast_map(img, sigma, M)  # GM 평균
+# Compute the texture maps
+log_gabor_filtered_plain = apply_log_gabor_filter_only(img_plain, 0.6, np.pi / 4, 0.6)
+log_gabor_filtered_encrypted = apply_log_gabor_filter_only(
+    img_encrypted, 0.6, np.pi / 4, 0.6
+)
+texture_map_combined_plain = compute_texture_map(img_plain, S, O)
+texture_map_combined_encrypted = compute_texture_map(img_encrypted, S, O)
 
-# log gabor 만
-log_gabor_filtered = apply_log_gabor_filter_only(img, 0.6, np.pi / 4, 0.6)
+# Compute the similarity maps
+S_C = compute_contrast_similarity_map(C_P, C_E)
+S_T = compute_texture_similarity_map(
+    texture_map_combined_plain, texture_map_combined_encrypted
+)
+S_VS = compute_visual_security_map(S_C, S_T)
 
-# 최종 texture feature map
-texture_map_combined = compute_texture_map(img, S, O)
+print("Visual Security Map S_VS")
+print(S_VS)
 
 # 시각화
 plt.figure(figsize=(20, 10))
 
 plt.subplot(2, 3, 1)
 plt.title("Original Image")
-plt.imshow(img, cmap="gray")
+plt.imshow(img_plain, cmap="gray")
 plt.axis("off")
 
 plt.subplot(2, 3, 2)
@@ -171,19 +228,19 @@ plt.colorbar()
 plt.axis("off")
 
 plt.subplot(2, 3, 4)
-plt.title("Original Image")
-plt.imshow(img, cmap="gray")
+plt.title("Encrypted Image")
+plt.imshow(img_encrypted, cmap="gray")
 plt.axis("off")
 
 plt.subplot(2, 3, 5)
-plt.title("Log-Gabor Filtered")
-plt.imshow(log_gabor_filtered, cmap="gray")
+plt.title("Contrast Similarity Map S_C")
+plt.imshow(S_C, cmap="gray")
 plt.colorbar()
 plt.axis("off")
 
 plt.subplot(2, 3, 6)
-plt.title("Texture Map (amplitude map)")
-plt.imshow(texture_map_combined, cmap="gray")
+plt.title("Texture Similarity Map S_T")
+plt.imshow(S_T, cmap="gray")
 plt.colorbar()
 plt.axis("off")
 
