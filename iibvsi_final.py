@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from scipy import signal
-
+import matplotlib.pyplot as plt
 
 def compute_gradient_magnitude(img, sigma):
     """
@@ -42,7 +42,7 @@ def compute_spatial_contrast_map(img, sigma, M):
     수식 4, 5 : GM 평균 계산
     - param img : 입력 이미지
     - param simga : 가우시안 필터 스케일 파라미터
-    - param M : GM 맵의 최대 차수  - 논문에서 1~8까지 사용했고, M=3이 best였다함.
+    - param M : GM 맵의 최대 차수  - 논문에서 1~8까지 사용했고, M=3이 best였다함.(기본값)
     => retrun C : spatial contrast map
     """
     G_maps = []
@@ -66,7 +66,7 @@ if img is None:
 
 
 sigma = 1.0
-M = 3 # papaer parameter settings : M = 3 기본값
+M = 3  # papaer parameter settings : M = 3 기본값
 
 G_P = compute_gradient_magnitude(img, sigma)
 print("========================")
@@ -74,3 +74,24 @@ C_P = compute_spatial_contrast_map(img, sigma, M)
 
 
 print(G_P)
+
+# 시각화
+plt.figure(figsize=(12, 6))
+
+plt.subplot(1, 3, 1)
+plt.title("Original Image")
+plt.imshow(img, cmap='gray')
+plt.axis('off')
+
+plt.subplot(1, 3, 2)
+plt.title("Gradient Magnitude G_P")
+plt.imshow(G_P, cmap='gray')
+plt.axis('off')
+
+plt.subplot(1, 3, 3)
+plt.title("Spatial Contrast Map C_P")
+plt.imshow(C_P, cmap='gray')
+plt.axis('off')
+
+plt.tight_layout()
+plt.show()
