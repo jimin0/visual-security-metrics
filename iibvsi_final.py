@@ -213,31 +213,31 @@ def compute_iibvsi(plain_img, encrypted_img, T=2, sigma=1.0, M=3, S=4, O=8):
     VS_scores = []
 
     for t in range(T + 1):
-        # Downsample images
+        # 다운샘플링
         plain_img_ds = downsample_image(plain_img, t)
         encrypted_img_ds = downsample_image(encrypted_img, t)
 
-        # Compute the gradient magnitudes and spatial contrast maps
+        # GM 맵, Spatial Contrast Map 계산
         G_P = compute_gradient_magnitude(plain_img_ds, sigma)
         C_P = compute_spatial_contrast_map(plain_img_ds, sigma, M)
         G_E = compute_gradient_magnitude(encrypted_img_ds, sigma)
         C_E = compute_spatial_contrast_map(encrypted_img_ds, sigma, M)
 
-        # Compute the texture maps
+        # texture
         T_P = compute_texture_map(plain_img_ds, S, O)
         T_E = compute_texture_map(encrypted_img_ds, S, O)
 
-        # Compute the similarity maps
+        # the similarity maps
         S_C = compute_contrast_similarity_map(C_P, C_E)
         S_T = compute_texture_similarity_map(T_P, T_E)
         S_VS = compute_visual_security_map(S_C, S_T)
 
-        # Compute the weighting map and visual security score
+        # the weighting map and visual security score
         W = compute_weighting_map(C_P, C_E)
         VS = compute_visual_security_score(W, S_VS)
         VS_scores.append(VS)
 
-    # Compute the final IIBVSI score
+    # IBVSI score
     IIBVSI_score = np.mean(VS_scores)
     return IIBVSI_score
 
@@ -247,7 +247,9 @@ def compute_iibvsi(plain_img, encrypted_img, T=2, sigma=1.0, M=3, S=4, O=8):
 """
 # 이미지 로드
 plain_image_path = "/Users/jiminking/Documents/김지민/projects/myproject/gradu/data/PEID/refimg/tower.bmp"
-encrypted_image_path = "/Users/jiminking/Documents/김지민/projects/myproject/gradu/data/PEID/encimg/tower_10_5.bmp"
+encrypted_image_path = "/Users/jiminking/Documents/김지민/projects/myproject/gradu/data/PEID/encimg/tower_09_5.bmp"
+# plain_image_path = "/Users/jiminking/Documents/김지민/projects/myproject/gradu/data/Celebrity Faces Dataset/Angelina Jolie/002_8f8da10e.jpg"
+# encrypted_image_path = "/Users/jiminking/Documents/김지민/projects/myproject/gradu/data/black_data/Angelina Jolie/002_8f8da10e.jpg.png"
 
 img_plain = cv2.imread(plain_image_path, cv2.IMREAD_GRAYSCALE)
 img_encrypted = cv2.imread(encrypted_image_path, cv2.IMREAD_GRAYSCALE)
@@ -273,11 +275,11 @@ C_P = compute_spatial_contrast_map(img_plain, sigma, M)  # GM 평균
 G_E = compute_gradient_magnitude(img_encrypted, sigma)  # GM
 C_E = compute_spatial_contrast_map(img_encrypted, sigma, M)  # GM 평균
 
-# Compute the texture maps
+# texture maps
 texture_map_combined_plain = compute_texture_map(img_plain, S, O)
 texture_map_combined_encrypted = compute_texture_map(img_encrypted, S, O)
 
-# Compute the similarity maps
+# similarity maps
 S_C = compute_contrast_similarity_map(C_P, C_E)
 S_T = compute_texture_similarity_map(
     texture_map_combined_plain, texture_map_combined_encrypted
@@ -290,35 +292,54 @@ S_VS = compute_visual_security_map(S_C, S_T)
 # 시각화
 plt.figure(figsize=(20, 10))
 
-plt.subplot(2, 3, 1)
+plt.subplot(3, 3, 1)
 plt.title("Plain Image")
 plt.imshow(img_plain, cmap="gray")
 plt.axis("off")
 
-plt.subplot(2, 3, 2)
+plt.subplot(3, 3, 2)
 plt.title("Gradient Magnitude G_P")
 plt.imshow(G_P, cmap="gray")
 plt.colorbar()
 plt.axis("off")
 
-plt.subplot(2, 3, 3)
+plt.subplot(3, 3, 3)
 plt.title("Spatial Contrast Map C_P")
 plt.imshow(C_P, cmap="gray")
 plt.colorbar()
 plt.axis("off")
 
-plt.subplot(2, 3, 4)
+
+plt.subplot(3, 3, 4)
 plt.title("Encrypted Image")
 plt.imshow(img_encrypted, cmap="gray")
 plt.axis("off")
 
-plt.subplot(2, 3, 5)
+plt.subplot(3, 3, 5)
+plt.title("Gradient Magnitude G_E")
+plt.imshow(G_E, cmap="gray")
+plt.colorbar()
+plt.axis("off")
+
+plt.subplot(3, 3, 6)
+plt.title("Spatial Contrast Map C_E")
+plt.imshow(C_E, cmap="gray")
+plt.colorbar()
+plt.axis("off")
+
+
+plt.subplot(3, 3, 7)
+plt.title("Encrypted Image")
+plt.imshow(img_encrypted, cmap="gray")
+plt.axis("off")
+
+plt.subplot(3, 3, 8)
 plt.title("Contrast Similarity Map S_C")
 plt.imshow(S_C, cmap="gray")
 plt.colorbar()
 plt.axis("off")
 
-plt.subplot(2, 3, 6)
+plt.subplot(3, 3, 9)
 plt.title("Texture Similarity Map S_T")
 plt.imshow(S_T, cmap="gray")
 plt.colorbar()
