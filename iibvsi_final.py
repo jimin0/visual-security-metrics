@@ -124,6 +124,9 @@ def compute_texture_map(img, S, O):
     return texture_map
 
 
+# 3. Similarity Measurement
+
+
 def compute_contrast_similarity_map(C_P, C_E, R1=1e-12):
     """
     수식 10: Spatial Contrast Similarity Map 계산
@@ -162,6 +165,83 @@ def compute_visual_security_map(S_C, S_T):
     return S_VS
 
 
+# 3. Image Importance-Based Pooling
+def compute_weighting_map(C_P, C_E):
+    """
+    수식 13: Weighting Map 계산
+    - param C_P: 원본 이미지 GM 평균 맵
+    - param C_E: 암호화된 이미지의 GM 평균 맵
+    - return: Weighting Map
+    """
+    W = np.maximum(np.abs(C_P), np.abs(C_E))
+    return W
+
+
+def compute_visual_security_score(W, S_VS):
+    """
+    수식 14: Visual Security Score 계산
+    - param W: Weighting Map
+    - param S_VS: Visual Security Map
+    - return: Visual Security Score
+    """
+    VS = np.sum(W * S_VS) / np.sum(W)
+    return VS
+
+
+def downsample_image(img, t):  # T를 위한
+    """
+    이미지 다운샘플링
+    - param img: 입력 이미지
+    - param t: 다운샘플링 횟수
+    - return: 다운샘플링된 이미지
+    """
+    return img[:: 2**t, :: 2**t]
+
+
+def compute_iibvsi(plain_img, encrypted_img, T=2, sigma=1.0, M=3, S=4, O=8):
+    """
+    수식 15: IIBVSI 계산
+    - param plain_img: 원본 이미지
+    - param encrypted_img: 암호화된 이미지
+    - param T: 다중 해상도 레벨 수
+    - param sigma: 가우시안 필터 스케일 파라미터
+    - param M: GM 맵의 최대 차수
+    - param S: 스케일 수
+    - param O: 방향 수
+    - return: IIBVSI Score
+    """
+    VS_scores = []
+
+    for t in range(T + 1):
+        # Downsample images
+        plain_img_ds = downsample_image(plain_img, t)
+        encrypted_img_ds = downsample_image(encrypted_img, t)
+
+        # Compute the gradient magnitudes and spatial contrast maps
+        G_P = compute_gradient_magnitude(plain_img_ds, sigma)
+        C_P = compute_spatial_contrast_map(plain_img_ds, sigma, M)
+        G_E = compute_gradient_magnitude(encrypted_img_ds, sigma)
+        C_E = compute_spatial_contrast_map(encrypted_img_ds, sigma, M)
+
+        # Compute the texture maps
+        T_P = compute_texture_map(plain_img_ds, S, O)
+        T_E = compute_texture_map(encrypted_img_ds, S, O)
+
+        # Compute the similarity maps
+        S_C = compute_contrast_similarity_map(C_P, C_E)
+        S_T = compute_texture_similarity_map(T_P, T_E)
+        S_VS = compute_visual_security_map(S_C, S_T)
+
+        # Compute the weighting map and visual security score
+        W = compute_weighting_map(C_P, C_E)
+        VS = compute_visual_security_score(W, S_VS)
+        VS_scores.append(VS)
+
+    # Compute the final IIBVSI score
+    IIBVSI_score = np.mean(VS_scores)
+    return IIBVSI_score
+
+
 """
 시각화 
 """
@@ -172,17 +252,21 @@ encrypted_image_path = "/Users/jiminking/Documents/김지민/projects/myproject/
 img_plain = cv2.imread(plain_image_path, cv2.IMREAD_GRAYSCALE)
 img_encrypted = cv2.imread(encrypted_image_path, cv2.IMREAD_GRAYSCALE)
 
-
 if img_plain is None:
     raise FileNotFoundError("Plain image not found")
 if img_encrypted is None:
     raise FileNotFoundError("Encrypted image not found")
+
+# IIBVSI 계산
+iibvsi_score = compute_iibvsi(img_plain, img_encrypted)
+print("IIBVSI Score:", iibvsi_score)
 
 # 파라미터 설정
 sigma = 1.0
 M = 3  # GM 맵의 최대 차수
 S = 4  # 스케일 수
 O = 8  # 방향 수
+
 # Compute the gradient magnitudes and spatial contrast maps
 G_P = compute_gradient_magnitude(img_plain, sigma)  # GM
 C_P = compute_spatial_contrast_map(img_plain, sigma, M)  # GM 평균
@@ -190,10 +274,6 @@ G_E = compute_gradient_magnitude(img_encrypted, sigma)  # GM
 C_E = compute_spatial_contrast_map(img_encrypted, sigma, M)  # GM 평균
 
 # Compute the texture maps
-log_gabor_filtered_plain = apply_log_gabor_filter_only(img_plain, 0.6, np.pi / 4, 0.6)
-log_gabor_filtered_encrypted = apply_log_gabor_filter_only(
-    img_encrypted, 0.6, np.pi / 4, 0.6
-)
 texture_map_combined_plain = compute_texture_map(img_plain, S, O)
 texture_map_combined_encrypted = compute_texture_map(img_encrypted, S, O)
 
@@ -204,14 +284,14 @@ S_T = compute_texture_similarity_map(
 )
 S_VS = compute_visual_security_map(S_C, S_T)
 
-print("Visual Security Map S_VS")
-print(S_VS)
+# print("Visual Security Map S_VS")
+# print(S_VS)
 
 # 시각화
 plt.figure(figsize=(20, 10))
 
 plt.subplot(2, 3, 1)
-plt.title("Original Image")
+plt.title("Plain Image")
 plt.imshow(img_plain, cmap="gray")
 plt.axis("off")
 
